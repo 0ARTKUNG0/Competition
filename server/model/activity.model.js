@@ -25,7 +25,8 @@ const Activity = sequelize.define("activity", {
     },
     team_size: {
         type: DataTypes.INTEGER,
-        allowNull: false
+        allowNull: false,
+        minimum: 1
     },
     date: {
         type: DataTypes.DATE,
@@ -53,18 +54,25 @@ const Activity = sequelize.define("activity", {
     },
     contact_email: {
         type: DataTypes.STRING,
-        allowNull: false
+        allowNull: false,
+        validate: {
+            isEmail: {
+                msg: 'Please use a valid email address.'
+            }
+        }
     },
     status: {
         type: DataTypes.STRING,
+        type: DataTypes.ENUM('upcoming', 'open', 'closed','in_progress', 'completed'),
         allowNull: false
-    }
+    },
+
 }, {
 });
 
-Activity.sync({force: false}).then(() => {
-    console.log('Activity table created successfully!');
-}).catch((error) => {
-    console.error('Unable to create table : ', error);
-});
+// Activity.sync({force: true}).then(() => {
+//     console.log('Activity table created successfully!');
+// }).catch((error) => {
+//     console.error('Unable to create table Activity : ', error);
+// });
 export default Activity;

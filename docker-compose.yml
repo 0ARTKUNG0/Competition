@@ -11,7 +11,7 @@ services:
     command: nodemon --legacy-watch index.js
     restart: always
     environment:
-      - CHOKIDAR_USEPOLLING=true
+      - CHOKIDAR_USEPOLLING=true 
       - DATABASE_URL=postgresql://postgres:postgres@db:5432/app_db
       - HOST=db
       - USER=postgres

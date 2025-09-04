@@ -1,19 +1,20 @@
 import express from 'express';
 import activityController from '../controllers/Activity.controllers.js';
+import authJwt from '../middleware/authjwt.js';
 
 const router = express.Router();
+// create activity (admin only)
+router.post('/', [authJwt.verifytoken, authJwt.isAdmin], activityController.createActivity);
+// get all activities
+router.get('/', activityController.getAllActivities);
+// get activity by id
+router.get('/:id', activityController.getActivityById);
+// update activity (admin only)
+router.put('/:id', [authJwt.verifytoken, authJwt.isAdmin], activityController.updateActivity);
+// delete activity (admin only)
+router.delete('/:id', [authJwt.verifytoken, authJwt.isAdmin], activityController.deleteActivity);
+// search activities
+router.get('/search', activityController.searchActivities);
 
-// Activity CRUD routes
-router.post('/', activityController.createActivity);           // Create activity
-router.get('/', activityController.getAllActivities);         // Get all activities
-router.get('/:id', activityController.getActivityById);       // Get activity by ID
-router.put('/:id', activityController.updateActivity);        // Update activity
-router.delete('/:id', activityController.deleteActivity);     // Delete activity
-
-// Team management routes (placeholder for future implementation)
-router.post('/:id/teams', activityController.addTeam);        // Add team to activity
-router.post('/:id/judges', activityController.addJudge);      // Add judge to activity
-router.post('/:id/scores', activityController.addScore);      // Add score to activity
-router.post('/:id/awards', activityController.announceAward); // Announce award
 
 export default router;

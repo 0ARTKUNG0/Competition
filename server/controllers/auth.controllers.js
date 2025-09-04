@@ -48,7 +48,7 @@ authController.register = async (req, res) => {
             });
           });
         } else {
-          user.setRoles([1]).then(() => {
+          user.setRoles([3]).then(() => {
             res.send({ message: "User was registered successfully!" });
           });
         }
