@@ -1,113 +1,83 @@
 import db from "../model/index.js";
-const User = db.User;
-const Role = db.Role;
-import config from "../config/auth.config.js"; // Fixed import back to default import
-import bcrypt from "bcryptjs"; //ใช้ในการเข้ารหัสรหัสผ่าน
-import jwt from "jsonwebtoken"; //ใช้ในการแลกเปลี่ยนข้อมูลระหว่างเซิร์ฟเวอร์และไคลเอนต์
-import { Op } from "sequelize"; //ใช้ในการจัดการกับการค้นหาข้อมูลในฐานข้อมูล
+import authconfig from "../config/auth.config.js";
+import jwt from "jsonwebtoken";
+import crypto from "crypto";
 
+const User = db.User;
 const authController = {};
 
 authController.register = async (req, res) => {
-  const { username, name, email, password } = req.body;
-  if (!username || !name || !email || !password) {
-    res
-      .status(400)
-      .send({ message: "Username, Name, Email or Password can not be empty!" });
-    return;
-  }
-  // Select * from user where username = username
-  await User.findOne({ where: { username } }).then((user) => {
-    if (user) {
-      res.status(400).send({ message: "Username already exists!" });
-      return;
+  const { type, name, email, password, school, phone} = req.body;
+  try {
+    // Check Validate required fields
+    if(!email || !password || !name || !type) {
+      return res.status(400).send({ message: "email, password, type and name are required!" });
     }
-
+    
+    // Validate user type
+    const allowedTypes = ['admin', 'teacher', 'jude'];
+    if (!allowedTypes.includes(type)) {
+      return res.status(400).send({ message: "Invalid user type. Allowed types are: admin, teacher, jude." });
+    }
+    
+    // Validate additional fields for teacher
+    if (type === 'teacher' && (!school || !phone)) {
+      return res.status(400).send({ message: "School and phone are required for teacher!" });
+    }
+    
+    // Check for duplicate email
+    const existingUser = await User.findOne({ where: { email } });
+    if (existingUser) {
+      return res.status(400).send({ message: "Email is already in use!" });
+    }
+    
+    // Create user object
     const newUser = {
-      username,
+      username: email, // Using email as username since it's required
       name,
       email,
-      password : bcrypt.hashSync(password, 8) // เข้ารหัสรหัสผ่านด้วย bcrypt
+      password,
+      type,
     };
-    User.create(newUser)
-      .then((user) => {
-        // send roles in reqiest body [ADMIN]
-        if (req.body.roles) {
-          // Select * from role where name = role1 OR name = role2
-          Role.findAll({
-            where: {
-              name: { [Op.or]: req.body.roles },
-            },
-          }).then((roles) => {
-            if (roles.length === 0) {
-              res.status(400).send({ message: "Role not found!" });
-              return;
-            }
-            user.setRoles(roles).then(() => {
-              res.send({ message: "User was registered successfully!" });
-            });
-          });
-        } else {
-          user.setRoles([3]).then(() => {
-            res.send({ message: "User was registered successfully!" });
-          });
-        }
-      })
-      .catch((error) => {
-        res.status(500).send({
-          message: error.message || "Something error while create the user",
+    
+    if (type === 'teacher') {
+      newUser.school = school;
+      newUser.phone = phone;
+    }
+    
+    // Create user in database
+    const user = await User.create(newUser);
+
+    // If user is teacher, create a verification token
+    if (type === 'teacher') {
+      try {
+        const token = crypto.randomBytes(32).toString('hex');
+        await db.VerificationToken.create({
+          token,
+          userId: user.id,
+          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000)
         });
-      });
-  });
-};
-
-authController.login = async (req, res) => {
-  const { username, password } = req.body;
-  if (!username || !password) {
-    res.status(400).send({ message: "You Stupid Username or Password can not be empty!!!!!!!!" });
-    return;
-  }
-  // Select * from user where username = username
-  await User.findOne({ where: { username } })
-  .then((user) => {
-    if (!user) {
-      res.status(404).send({ message: "You Stupid User not found!" });
-      return;
-    }
-    // Compare password
-    const passwordIsValid = bcrypt.compareSync(password, user.password);
-    if (!passwordIsValid) {
-      res.status(401).send({message: "You Stupid Password is not Correct!",});
-      return;
-    }
-    // Create token
-    const token = jwt.sign({ id: user.id, username: user.username }, config.secret, {
-      expiresIn: 86400, // 24 hours
-    });
-    // Get roles
-    const authorities = [];
-    user.getRoles().then((roles) => {
-      console.log('User roles for', user.username, ':', roles.map(r => r.name));
-      for(let i = 0; i < roles.length; i++) {
-        authorities.push("ROLE_" + roles[i].name.toUpperCase());
+        console.log(`Verification token for ${user.email}: ${token}`);
+      } catch (error) {
+        console.error("Error creating verification token:", error);
       }
-      res.status(200).send({
-        accessToken: token,
-        id: user.id,
-        username: user.username,
-        name: user.name,
-        email: user.email,
-        authorities: authorities,
-        roleId: roles[0]?.id ?? null, // send first role id if exists
-      });
-    });
-  })
-  .catch((error) => {
-    res.status(500).send({
-      message: error.message || "Something error while login the user",
-    });
-  });
+    }
 
+    res.status(201).send({ 
+      message: user.type === 'teacher' ? 
+        "Teacher was registered successfully! Please check your email to verify" :
+        "User was registered successfully!",
+      user: { 
+        id: user.id, 
+        name: user.name, 
+        email: user.email, 
+        type: user.type,
+        ...(user.type === 'teacher' && { isVerified: user.isVertified })
+      }
+    });
+  } catch (error) {
+    res.status(500).send({ message: error.message || "Something went wrong while creating the user" });
+  }
 };
 
 export default authController;
