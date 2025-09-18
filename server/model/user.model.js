@@ -1,16 +1,17 @@
 import { DataTypes } from "sequelize";
 import sequelize from "./db.js";
 import bcrypt from "bcryptjs";
+
 const User = sequelize.define("user", {
-  id : {
+  id: {
     type: DataTypes.INTEGER,
     autoIncrement: true,
-    unique: true
+    primaryKey: true, // Fix: id should be primary key, not username
   },
   username: {
     type: DataTypes.STRING,
     allowNull: false,
-    primaryKey: true,
+    unique: true,
   },
   name: {
     type: DataTypes.STRING,
@@ -29,15 +30,23 @@ const User = sequelize.define("user", {
     allowNull: false,
   },
   type: {
-    type: DataTypes.STRING,
+    type: DataTypes.ENUM('admin', 'teacher', 'judge'), // Better to use ENUM
     allowNull: false,
   },
-  isVertified: {
+  isVerified: { // Fix: was "isVertified" 
     type: DataTypes.BOOLEAN,
     defaultValue: false,
+  },
+  // Add teacher-specific fields
+  school: {
+    type: DataTypes.STRING,
+    allowNull: true, // Optional for non-teachers
+  },
+  phone: {
+    type: DataTypes.STRING,
+    allowNull: true, // Optional for non-teachers
   }
 }, {
-  // hooks for hashing password before saving to database
   hooks: {
     beforeCreate: async (user) => {
       if (user.password) {
@@ -54,15 +63,8 @@ const User = sequelize.define("user", {
   }
 });
 
-// User.sync({ force: false })
-//   .then(() => {
-//     console.log("Table created or already exists");
-//   })
-//   .catch((error) => {
-//     console.log("Error creating table", error);
-//   });
-
 User.prototype.comparePassword = async function (candidatePassword) {
   return await bcrypt.compare(candidatePassword, this.password);
 };
+
 export default User;

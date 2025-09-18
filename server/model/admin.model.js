@@ -1,7 +1,9 @@
 import { DataTypes } from "sequelize";
 import User from "./user.model.js";
+import sequelize from "./db.js";
 
 const Admin = User.init({}, {
+    sequelize,
     scopes: {
         defaultScope: {
             where: {
@@ -14,7 +16,7 @@ const Admin = User.init({}, {
         }
     }
 }});
-// User.sync({ force: false })
+// Admin.sync({ force: false })
 //   .then(() => {
 //     console.log("Table created or already exists");
 //   })

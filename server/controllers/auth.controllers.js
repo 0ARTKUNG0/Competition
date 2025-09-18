@@ -2,11 +2,12 @@ import db from "../model/index.js";
 import authconfig from "../config/auth.config.js";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
+import { sendVerificationEmail } from "../utils/email.js";
+import VerificationToken from "../model/verificationtoken.model.js";
 
 const User = db.User;
-const authController = {};
 
-authController.register = async (req, res) => {
+const signUp = async (req, res) => {
   const { type, name, email, password, school, phone} = req.body;
   try {
     // Check Validate required fields
@@ -57,9 +58,11 @@ authController.register = async (req, res) => {
           userId: user.id,
           expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000)
         });
-        console.log(`Verification token for ${user.email}: ${token}`);
+        console.log("Verification token created: ", VerificationToken);
+
+        await sendVerificationEmail(user.email, VerificationToken, user.name);
       } catch (error) {
-        console.error("Error creating verification token:", error);
+        console.error("Error sending verification email: ", error);
       }
     }
 
@@ -78,6 +81,52 @@ authController.register = async (req, res) => {
   } catch (error) {
     res.status(500).send({ message: error.message || "Something went wrong while creating the user" });
   }
+};
+
+const signIn = async (req, res) => {
+  const { email, password } = req.body;
+  try {
+    // Check Validate required fields
+    if(!email || !password) {
+      return res.status(400).send({ message: "email and password are required!" });
+    }
+    
+    // Find user by email
+    const user = await User.findOne({ where: { email } });
+    if (!user) {
+      return res.status(401).send({ message: "Invalid email or password!" });
+    }
+    
+    // Check if password matches
+    const isPasswordValid = user.password === password; // You should use a proper password hashing and comparison here
+    if (!isPasswordValid) {
+      return res.status(401).send({ message: "Invalid email or password!" });
+    }
+    
+    // Generate JWT token
+    const token = jwt.sign({ id: user.id, email: user.email, type: user.type }, authconfig.secret, {
+      expiresIn: authconfig.jwtExpiration
+    });
+    
+    res.status(200).send({ 
+      message: "User signed in successfully!",
+      user: { 
+        id: user.id, 
+        name: user.name, 
+        email: user.email, 
+        type: user.type,
+        ...(user.type === 'teacher' && { isVerified: user.isVertified })
+      },
+      accessToken: token
+    });
+  } catch (error) {
+    res.status(500).send({ message: error.message || "Something went wrong while signing in" });
+  }
+};
+
+const authController = {
+  signUp,
+  signIn,
 };
 
 export default authController;

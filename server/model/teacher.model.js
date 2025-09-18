@@ -1,5 +1,6 @@
 import { DataTypes } from "sequelize";
 import User from "./user.model.js";
+import sequelize from "./db.js";
 
 const Teacher = User.init({
     school : {
@@ -11,6 +12,7 @@ const Teacher = User.init({
         allowNull: false
     },
 }, {
+    sequelize,
     scopes: {
         defaultScope: {
             where: {
@@ -25,7 +27,7 @@ const Teacher = User.init({
     }
 });
 
-// User.sync({ force: false })
+// Teacher.sync({ force: true })
 //   .then(() => {
 //     console.log("Table created or already exists");
 //   })

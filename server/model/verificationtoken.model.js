@@ -1,6 +1,5 @@
 import { DataTypes } from "sequelize";
 import sequelize from "./db.js";
-import { TokenExpiredError } from "jsonwebtoken";
 
 const VerificationToken = sequelize.define("verification_token", {
     id : {
@@ -23,4 +22,11 @@ const VerificationToken = sequelize.define("verification_token", {
         allowNull: false
     }
 });
+// VerificationToken.sync({ force: false })
+//   .then(() => {
+//     console.log("Table created or already exists");
+//   })
+//   .catch((error) => {
+//     console.log("Error creating table", error);
+//   });
 export default VerificationToken;

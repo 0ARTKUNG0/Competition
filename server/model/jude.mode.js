@@ -1,6 +1,8 @@
 import User from "./user.model.js";
+import sequelize from "./db.js";
 
 const Jude = User.init({}, {
+    sequelize,
     scopes: {
         defaultScope: {
             where: {
@@ -15,7 +17,7 @@ const Jude = User.init({}, {
     }
 });
 
-// User.sync({ force: false })
+// Jude.sync({ force: false })
 //   .then(() => {
 //     console.log("Table created or already exists");
 //   })
